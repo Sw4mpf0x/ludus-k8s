@@ -1,0 +1,33 @@
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: letsencrypt-prod
+  namespace: cert-manager
+spec:
+  acme:
+    # The ACME server URL
+    server: https://acme-v02.api.letsencrypt.org/directory
+    # Email address used for ACME registration
+    email: {{ kube_cert_user_email }}
+    # Name of a secret used to store the ACME account private key
+    privateKeySecretRef:
+      name: letsencrypt-prod
+    solvers:
+{% if kube_cert_manager_challenge == "dns01" %}
+    # Enable the DNS-01 challenge provider
+    - selector:
+        dnsZones:
+          - "{{ kube_cert_manager_challenge_dns01_domain }}"
+      dns01:
+        route53:
+          region: us-east-1
+          accessKeyID: {{ kube_cert_manager_challenge_dns01_ak }}
+          secretAccessKeySecretRef:
+            name: prod-route53-credentials-secret
+            key: sk
+{% else %}
+    # Enable the HTTP-01 challenge provider
+    - http01:
+        ingress:
+          class: nginx
+{% endif %}

@@ -1,0 +1,14 @@
+---
+- name: Install helm chart
+  import_tasks: helm_chart.yaml
+  vars:
+    helm_chart_name: kubeapps
+    helm_chart_namespace: kubeapps
+    helm_repo_name: bitnami
+    helm_repo_url: https://charts.bitnami.com/bitnami
+    helm_chart_version: "{{ kube_kubeapps_chart_version }}"
+
+- template: src=kubeapps-ingress.j2 dest=/tmp/kubeapps-ingress.yaml
+- command: kubectl apply -f /tmp/kubeapps-ingress.yaml
+  environment:
+    KUBECONFIG: "{{KUBECONFIG}}"
