@@ -1,0 +1,65 @@
+- name: "Helm | Precompute chart reference"
+  vars:
+    _derived_repo_name: >-
+      {{ (helm_repo_name | default('')) |
+         ternary(helm_repo_name,
+                 (helm_repo_url | default('') | urlsplit('hostname') | regex_replace('^www\\.', ''))) }}
+  set_fact:
+    helm__chart_ref_final: >-
+      {{
+        (helm_chart_ref | default('') | trim)
+        if (helm_chart_ref | default('') | trim) != ''
+        else (_derived_repo_name ~ '/' ~ helm_chart_name)
+      }}
+  when: (helm_chart_ref | default('') | trim) != '' or
+        ((helm_repo_url | default('') | trim) != '' and (helm_chart_name | default('') | trim) != '')
+
+- name: "Helm | Fail fast if inputs are insufficient"
+  fail:
+    msg: >
+      Provide either 'helm_chart_ref' (path/repo/OCI) OR both 'helm_repo_url' and 'helm_chart_name'.
+      Current values: helm_chart_ref='{{ helm_chart_ref }}', helm_repo_url='{{ helm_repo_url }}', helm_chart_name='{{ helm_chart_name }}'
+  when: helm__chart_ref_final is not defined
+
+# If a classic HTTP/S repo URL is supplied, add/ensure repo exists.
+- name: "Helm | Add/ensure repo (if repo URL provided)"
+  community.kubernetes.helm_repository:
+    name: "{{ (helm_repo_name | default('') | trim) | default((helm_repo_url | urlsplit('hostname') | regex_replace('^www\\.', ''))) }}"
+    repo_url: "{{ helm_repo_url }}"
+    state: present
+  when:
+    - (helm_repo_url | default('') | trim) != ''
+    - not (helm__chart_ref_final | regex_search('^oci://'))  # helm_repository doesn’t manage OCI
+
+- name: "Helm | Ensure namespace exists (optionally)"
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: v1
+      kind: Namespace
+      metadata:
+        name: "{{ helm_namespace }}"
+  when: helm_create_namespace | bool
+
+# Assemble values input: inline dict + files (both optional)
+- name: "Helm | Build values list"
+  set_fact:
+    helm__values_files_final: "{{ helm_values_files | default([]) }}"
+    helm__values_inline_final: "{{ helm_values | default({}) }}"
+
+- name: "Helm | Install/upgrade release"
+  community.kubernetes.helm:
+    name: "{{ helm_release_name }}"
+    chart_ref: "{{ helm__chart_ref_final }}"
+    release_namespace: "{{ helm_namespace }}"
+    create_namespace: "{{ helm_create_namespace }}"
+    update_repo_cache: true
+    chart_version: "{{ (helm_chart_version | default('')) | ternary(helm_chart_version, omit) }}"
+    values: "{{ helm__values_inline_final if (helm__values_inline_final | length > 0) else omit }}"
+    values_files: "{{ helm__values_files_final if (helm__values_files_final | length > 0) else omit }}"
+    wait: "{{ helm_wait | bool }}"
+    timeout: "{{ helm_timeout }}"
+    atomic: "{{ helm_atomic | bool }}"
+    update_dependencies: "{{ helm_update_dependencies | bool }}"
+    force: "{{ helm_force_upgrade | bool }}"
+    state: present
