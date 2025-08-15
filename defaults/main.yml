@@ -15,14 +15,8 @@ kube_token_ttl: 0
 # POD network cidr
 kube_pod_network_cidr: 10.244.0.0/16
 # Type of network to install: currently supported: flannel, kube-router, calico, weave
-kube_network: flannel
-# Kubelet extra args
-kubelet_extra_args: '' # deprecated move to kubelet_extra_args_dict
-# dict of kubelet extra args, if set kubelet_extra_args is ignored
-# A key in this map is the flag name as it appears on the command line except without leading dash(es).
-kubelet_extra_args_dict: {}
-# Enable/Disable Kubelet Authentication
-kubelet_authentication: true
+kube_network: calico
+
 # Kube API server options
 kube_apiserver_options: []
 # CRI runtime
@@ -32,26 +26,42 @@ kube_cri_runtime_install: true
 # CRI dockerd version
 kube_cri_dockerd_version: "0.3.16"
 
+#### Kubelet config ####
+# Kubelet extra args
+kubelet_extra_args: '' # deprecated move to kubelet_extra_args_dict
+# dict of kubelet extra args, if set kubelet_extra_args is ignored
+# A key in this map is the flag name as it appears on the command line except without leading dash(es).
+kubelet_extra_args_dict: {}
+# Enable/Disable Kubelet Authentication
+kubelet_anonymous_access: false
+########################
+
 #### HELM ####
 # Helm version
 kube_install_helm_version: "v3.17.2"
 
+install_helm_app: false
 # Release basics for your app
 helm_release_name: my-app
 helm_namespace: default
 helm_create_namespace: true
 
-# One of the following inputs should be provided:
-# 1) Use a repo URL + chart name (e.g., repo URL https://charts.bitnami.com/bitnami + chart name nginx)
+# Pick ONE of these input styles:
+
+# A) Public repo + name (most common)
 helm_repo_url: ""         # e.g., https://charts.bitnami.com/bitnami
 helm_repo_name: ""        # optional; if empty, will derive from URL host (e.g., "bitnami")
 helm_chart_name: ""       # e.g., nginx
 
-# 2) Or provide a direct chart reference:
-#    - "bitnami/nginx"
-#    - "/tmp/nginx-15.0.0.tgz"
-#    - "oci://registry-1.docker.io/bitnamicharts/nginx"
-helm_chart_ref: ""
+# B) Local chart folder (directory with Chart.yaml)
+helm_chart_local_path: ""          # e.g., "./charts/my-app" or "/srv/charts/my-app"
+
+# C) OCI chart ref
+helm_chart_oci_ref: ""             # e.g., "oci://ghcr.io/org/chart"
+
+# Optional OCI auth (only used if provided)
+oci_username: ""
+oci_password: ""
 
 # Optional version pin (works for repo or OCI charts)
 helm_chart_version: ""    # e.g., "15.0.0"
@@ -61,13 +71,10 @@ helm_values: {}           # inline values map
 helm_values_files: []     # e.g., ["files/values.yaml", "files/overrides.yaml"]
 
 # Extra helm options
-helm_wait: true
-helm_timeout: 600         # seconds
-helm_atomic: true
-helm_update_dependencies: true  # run 'helm dependency update' for local charts
-helm_force_upgrade: false
-
+helm_kubeconfig: /etc/kubernetes/admin.conf
 ##############
+
+
 # Deploy the Dashboard
 kube_deploy_dashboard: false
 # Value to pass to the kubeadm init --apiserver-advertise-address option
@@ -168,7 +175,6 @@ kyverno_validationFailureAction: ensure
 kube_install_yunikorn: false
 # Apache Yunikorn's version to be installed
 kube_yunikorn_version: 1.1.0
-
 
 cilium_debug_log: true
 cilium_k8s_endpoint: "{{ ansible_default_ipv4.address }}"

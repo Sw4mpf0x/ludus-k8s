@@ -1,0 +1,136 @@
+- name: "Helm | Precompute chart reference"
+  vars:
+    _derived_repo_name: >-
+      {{ (helm_repo_name | default('')) |
+         ternary(helm_repo_name,
+                 (helm_repo_url | default('') | urlsplit('hostname') | regex_replace('^www\\.', ''))) }}
+  set_fact:
+    helm__chart_ref_final: >-
+      {{
+        (helm_chart_ref | default('') | trim)
+        if (helm_chart_ref | default('') | trim) != ''
+        else (_derived_repo_name ~ '/' ~ helm_chart_name)
+      }}
+  when: (helm_chart_ref | default('') | trim) != '' or
+        ((helm_repo_url | default('') | trim) != '' and (helm_chart_name | default('') | trim) != '')
+
+- name: "Helm | Fail fast if inputs are insufficient"
+  fail:
+    msg: >
+      Provide either 'helm_chart_ref' (path/repo/OCI) OR both 'helm_repo_url' and 'helm_chart_name'.
+      Current values: helm_chart_ref='{{ helm_chart_ref }}', helm_repo_url='{{ helm_repo_url }}', helm_chart_name='{{ helm_chart_name }}'
+  when: helm__chart_ref_final is not defined
+
+- name: "Helm | Ensure exactly one input style selected"
+  ansible.builtin.assert:
+    that:
+      - >
+        (
+          (helm_chart_local_path | default('') | length > 0) | ternary(1, 0) +
+          ((helm_repo_url | default('') | length > 0 and helm_chart_name | default('') | length > 0) | ternary(1, 0)) +
+          (helm_chart_oci_ref | default('') | length > 0 | ternary(1, 0))
+        ) == 1
+    fail_msg: >
+      Choose one: (A) helm_chart_local_path, (B) helm_repo_url + helm_chart_name, or (C) helm_chart_oci_ref.
+
+
+# If a classic HTTP/S repo URL is supplied, add/ensure repo exists.
+- name: "Helm | Add/ensure repo (if repo URL provided)"
+  kubernetes.core.helm_repository:
+    name: "{{ (helm_repo_name | default('') | trim) | default((helm_repo_url | urlsplit('hostname') | regex_replace('^www\\.', ''))) }}"
+    repo_url: "{{ helm_repo_url }}"
+    state: present
+  when:
+    - (helm_repo_url | default('') | trim) != ''
+    - not (helm__chart_ref_final | regex_search('^oci://'))  # helm_repository doesn’t manage OCI
+
+- name: "Helm | Ensure Python pip present"
+  package:
+    name: python3-pip
+    state: present
+  become: yes
+
+- name: :"Helm | Install Kubernetes Python SDK on remote"
+  ansible.builtin.pip:
+    name:
+      - "kubernetes>=24.0.0"
+      - pyyaml
+    executable: pip3
+  become: yes
+
+- name: "Helm | Ensure namespace exists (optionally)"
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: v1
+      kind: Namespace
+      metadata:
+        name: "{{ helm_namespace }}"
+  when: helm_create_namespace | bool
+
+# Assemble values input: inline dict + files (both optional)
+- name: "Helm | Build values list"
+  set_fact:
+    helm__values_files_final: "{{ helm_values_files | default([]) }}"
+    helm__values_inline_final: "{{ helm_values | default({}) }}"
+
+# If using a LOCAL chart folder, copy it from CONTROL -> TARGET
+- name: "Helm (local) | Copy chart folder to target"
+  ansible.builtin.copy:
+    src: "{{ helm_chart_local_path }}/"
+    dest: "/tmp/helm-chart-{{ helm_release_name }}/"
+    mode: "0755"
+  when: helm_chart_local_path | length > 0
+
+# Repo flow: ensure repo on TARGET
+- name: "Helm (repo) | Ensure chart repo exists on target"
+  kubernetes.core.helm_repository:
+    name: "{{ helm_repo_name | default(helm_repo_url | regex_replace('^https?://', '') | regex_replace('/.*$', '')) }}"
+    repo_url: "{{ helm_repo_url }}"
+    state: present
+  when:
+    - helm_chart_local_path | length == 0
+    - helm_chart_oci_ref | length == 0
+
+# OCI flow: optional login on TARGET
+- name: "Helm (oci) | Derive registry host"
+  ansible.builtin.set_fact:
+    helm__oci_host: "{{ helm_chart_oci_ref | regex_replace('^oci://([^/]+).*', '\\1') }}"
+  when: helm_chart_oci_ref | length > 0
+
+- name: "Helm (oci) | Login to registry (if creds provided) on target"
+  ansible.builtin.command:
+    cmd: >
+      helm registry login {{ helm__oci_host }}
+      --username {{ oci_username }}
+      --password {{ oci_password }}
+  when:
+    - helm_chart_oci_ref | length > 0
+    - oci_username | length > 0
+    - oci_password | length > 0
+  changed_when: "'Login Succeeded' in stdout"
+
+# Install / Upgrade release (single helm task for all styles)
+- name: "Helm | Install/upgrade release (runs on target)"
+  kubernetes.core.helm:
+    name: "{{ helm_release_name }}"
+    chart_ref: >-
+      {{
+        (helm_chart_local_path | default('') | length > 0) | ternary('/tmp/helm-chart-' ~ helm_release_name ~ '/',
+        (helm_chart_oci_ref   | default('') | length > 0) | ternary(helm_chart_oci_ref,
+        helm_chart_name))
+      }}
+    # repo ensured earlier; no chart_repo_url here (avoids warning path)
+    release_namespace: "{{ helm_namespace }}"
+    create_namespace: "{{ helm_create_namespace }}"
+    update_repo_cache: >-
+      {{ (helm_chart_local_path | default('') | length == 0 and helm_chart_oci_ref | default('') | length == 0) | bool }}
+    chart_version: "{{ helm_chart_version | default(omit, true) }}"   # ignored for local folder
+    values_files: "{{ helm_values_files | default(omit, true) }}"
+    values: "{{ helm_values | default(omit, true) }}"
+    # Only for local charts; NOT for repo/OCI (avoids 'not supported on upgrade')
+    dependency_update: >-
+      {{ (helm_chart_local_path | default('') | length > 0) | ternary(true, false) }}
+    kubeconfig: "{{ helm_kubeconfig }}"
+    state: present
+  when: install_helm_app | bool
