@@ -206,4 +206,7 @@
 - import_tasks: yunikorn.yaml
   when: kube_install_yunikorn | bool
 
+- import_tasks: helm_install.yaml
+  when: install_helm_app | bool
+
 - import_tasks: delete_wns.yaml
