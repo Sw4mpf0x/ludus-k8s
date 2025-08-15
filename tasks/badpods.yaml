@@ -1,0 +1,49 @@
+- set_fact:
+    KUBECONFIG: /etc/kubernetes/admin.conf
+
+- name: "BadPods | Validate selection keys exist"
+  ansible.builtin.assert:
+    that:
+      - badpods | length > 0
+      - (badpods | difference(badpods_url_map.keys() | list)) | length == 0
+    fail_msg: >-
+      badpods contains unknown keys.
+      Known keys: {{ badpods_url_map.keys() | list | sort }}
+
+- name: "BadPods | Ensure Python pip present"
+  package:
+    name: python3-pip
+    state: present
+  become: yes
+
+- name: :"BadPods | Install Kubernetes Python SDK on remote"
+  ansible.builtin.pip:
+    name:
+      - "kubernetes>=24.0.0"
+      - pyyaml
+    executable: pip3
+  become: yes
+
+- name: "BadPods | Ensure namespace exists"
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: v1
+      kind: Namespace
+      metadata:
+        name: "{{ badpods_namespace }}"
+
+# Apply or delete each selected manifest by URL
+- name: "BadPods | Apply selected manifests"
+  environment:
+    KUBECONFIG: "{{KUBECONFIG}}"
+  ansible.builtin.command:
+    cmd: >-
+      kubectl apply -f {{ badpods_url_map[item] }}
+      -n {{ badpods_namespace }}
+  register: _apply_result
+  changed_when: >-
+    (_apply_result.stdout is search('created') or
+     _apply_result.stdout is search('configured') or
+     _apply_result.stdout is search('unchanged') == false)
+  loop: "{{ badpods }}"

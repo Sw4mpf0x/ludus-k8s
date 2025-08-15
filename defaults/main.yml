@@ -8,6 +8,8 @@ kube_install_method: kubeadm
 kube_ntp_servers: [ntp.upv.es, ntp.uv.es]
 # IP address or name of the Kube front node
 kube_server: "{{ ansible_default_ipv4.address }}"
+# kubeconfig location
+kubeconfig: /etc/kubernetes/admin.conf
 # Token
 kube_token: "kube01.{{ lookup('password', '/var/tmp/tokenpass chars=ascii_lowercase,digits length=16') }}"
 # Token TTL duration (0 do not expire)
@@ -25,6 +27,32 @@ kube_cri_runtime: docker # docker, containerd or crio
 kube_cri_runtime_install: true
 # CRI dockerd version
 kube_cri_dockerd_version: "0.3.16"
+
+#### BadPods ####
+# Namespace to apply into (omit to use manifest namespace or default kube context)
+badpods_namespace: default
+
+# Which BadPods to apply (choose any subset)
+badpods:
+  # - everything_allowed_exec
+  # - priv_and_hostpid_exec
+  # - priv_exec
+  # - hostpath_exec
+  # - hostpid_exec
+  # - hostnetwork_exec
+  # - hostipc_exec
+  # - nothing_allowed_exec
+
+badpods_url_map:
+  everything_allowed_exec: "https://raw.githubusercontent.com/BishopFox/badPods/main/manifests/everything-allowed/pod/everything-allowed-exec-pod.yaml"
+  priv_and_hostpid_exec:  "https://raw.githubusercontent.com/BishopFox/badPods/main/manifests/priv-and-hostpid/pod/priv-and-hostpid-exec-pod.yaml"
+  priv_exec:               "https://raw.githubusercontent.com/BishopFox/badPods/main/manifests/priv/pod/priv-exec-pod.yaml"
+  hostpath_exec:           "https://raw.githubusercontent.com/BishopFox/badPods/main/manifests/hostpath/pod/hostpath-exec-pod.yaml"
+  hostpid_exec:            "https://raw.githubusercontent.com/BishopFox/badPods/main/manifests/hostpid/pod/hostpid-exec-pod.yaml"
+  hostnetwork_exec:        "https://raw.githubusercontent.com/BishopFox/badPods/main/manifests/hostnetwork/pod/hostnetwork-exec-pod.yaml"
+  hostipc_exec:            "https://raw.githubusercontent.com/BishopFox/badPods/main/manifests/hostipc/pod/hostipc-exec-pod.yaml"
+  nothing_allowed_exec:    "https://raw.githubusercontent.com/BishopFox/badPods/main/manifests/nothing-allowed/pod/nothing-allowed-exec-pod.yaml"
+#################
 
 #### Kubelet config ####
 # Kubelet extra args
