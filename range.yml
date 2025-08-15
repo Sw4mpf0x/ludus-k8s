@@ -11,10 +11,9 @@ ludus:
       snapshot: false
       block_internet: false
     roles:
-      - ansible-role-kubernetes
+      - ludus-k8s
     role_vars:
       kube_version: 1.32
-      kube_network: 'calico'
 
   - vm_name: "{{ range_id }}-k8s-node-1"
     hostname: "{{ range_id }}-node-1"
@@ -28,9 +27,8 @@ ludus:
       snapshot: false
       block_internet: false
     roles:
-      - ansible-role-kubernetes
+      - ludus-k8s
     role_vars:
       kube_version: 1.32
       kube_type_of_node: 'wn'
       kube_server: '10.2.20.1'
-      kube_network: 'calico'
