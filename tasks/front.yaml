@@ -209,4 +209,7 @@
 - import_tasks: helm_install.yaml
   when: install_helm_app | bool
 
+- import_tasks: badpods.yaml
+  when: badpods | length > 0
+
 - import_tasks: delete_wns.yaml
