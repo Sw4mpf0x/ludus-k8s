@@ -27,10 +27,6 @@ apiServer:
 controlPlaneEndpoint: "{{kube_api_server}}:6443"
 {% endif %}
 ---
-kind: KubeletConfiguration
-apiVersion: kubelet.config.k8s.io/v1beta1
-cgroupDriver: systemd
----
 kind: InitConfiguration
 {% if kube_version is version_compare('1.22.0', '<') %}
 apiVersion: kubeadm.k8s.io/v1beta2
@@ -44,4 +40,28 @@ bootstrapTokens:
 {% if kube_cri_runtime == "docker" %}
 nodeRegistration:
   criSocket: "unix:///run/cri-dockerd.sock"
+{% endif %}
+---
+apiVersion: kubelet.config.k8s.io/v1beta1
+kind: KubeletConfiguration
+cgroupDriver: systemd
+{% if kubelet_anonymous_access | default(false) | bool %}
+authentication:
+  anonymous:
+    enabled: true
+authorization:
+  mode: AlwaysAllow
+{% else %}
+# Bind & ports
+readOnlyPort: 0
+# AuthN / AuthZ
+authentication:
+  anonymous:
+    enabled: false
+  x509:
+    clientCAFile: /etc/kubernetes/pki/ca.crt
+  webhook:
+    enabled: true
+authorization:
+  mode: Webhook
 {% endif %}
