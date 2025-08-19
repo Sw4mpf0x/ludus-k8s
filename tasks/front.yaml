@@ -164,6 +164,9 @@
     KUBECONFIG: "{{KUBECONFIG}}"
   with_items: "{{ kube_apply_repos }}"
 
+- import_tasks: kubectl_apply.yaml
+  when: kubectl_apply_path != ""
+
 - import_tasks: nfs-client.yaml
   when: kube_install_nfs_client | bool and not kube_install_longhorn | bool
 
@@ -207,9 +210,9 @@
   when: kube_install_yunikorn | bool
 
 - import_tasks: helm_install.yaml
-  when: install_helm_app | bool
+  when: (helm_repo_url != "") or (helm_chart_local_path != "") or (helm_chart_oci_ref != "")
 
 - import_tasks: badpods.yaml
-  when: badpods | length > 0
+  when: (badpods | default([])) | length > 0
 
 - import_tasks: delete_wns.yaml

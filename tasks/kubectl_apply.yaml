@@ -1,0 +1,75 @@
+---
+- name: "kubectl apply | Resolve local source path"
+  ansible.builtin.set_fact:
+    kube_src_local: >-
+      {{ kubectl_apply_path
+         if (kubectl_apply_path | regex_search('^/'))
+         else ((role_path | default(playbook_dir)) ~ '/files/' ~ kubectl_apply_path) }}
+
+- name: "kubectl apply | Validate source path exists (on control)"
+  ansible.builtin.stat:
+    path: "{{ kube_src_local }}"
+  register: k8s_src_stat
+  delegate_to: localhost
+  run_once: true
+
+- name: Ensure /tmp/k8s-manifests directory exists
+  ansible.builtin.file:
+    path: /tmp/k8s-manifests
+    state: directory
+    mode: '0755'
+
+- name: "kubectl apply | Copy directory to target"
+  copy:
+    src: "{{ kubectl_apply_path }}/"
+    dest: "/tmp/k8s-manifests/{{ inventory_hostname }}/"
+    mode: "0644"
+  when: k8s_src_stat.stat.isdir | default(false)
+
+- name: "kubectl apply | Copy single manifest to target"
+  copy:
+    src: "{{ kubectl_apply_path }}"
+    dest: "/tmp/k8s-manifests/{{ inventory_hostname }}.yaml"
+    mode: "0644"
+  when: not (k8s_src_stat.stat.isdir | default(false))
+
+- name: "kubectl apply |Ensure Python pip present"
+  package:
+    name: python3-pip
+    state: present
+  become: yes
+
+- name: :"kubectl apply | Install Kubernetes Python SDK on remote"
+  ansible.builtin.pip:
+    name:
+      - "kubernetes>=24.0.0"
+      - pyyaml
+    executable: pip3
+  become: yes
+
+- name: "kubectl apply | Ensure namespace exists (safe if it already does)"
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: v1
+      kind: Namespace
+      metadata:
+        name: "default"
+
+- name: "kubectl apply | Select apply target"
+  set_fact:
+    _k8s_apply_target: >-
+      {{ (k8s_src_stat.stat.isdir | default(false))
+      | ternary('/tmp/k8s-manifests/' ~ inventory_hostname ~ '/',
+      '/tmp/k8s-manifests/' ~ inventory_hostname ~ '.yaml') }}
+
+- name: "kubectl apply | Apply manifests"
+  ansible.builtin.command:
+    cmd: >-
+      kubectl
+      apply -f {{ _k8s_apply_target }}
+  register: k8s_apply
+  changed_when: >
+    (k8s_apply.stdout is search('created') or
+      k8s_apply.stdout is search('configured') or
+      k8s_apply.stdout is search('patched'))
