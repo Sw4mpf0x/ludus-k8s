@@ -10,7 +10,7 @@ kube_ntp_servers: [ntp.upv.es, ntp.uv.es]
 kube_server: "{{ ansible_default_ipv4.address }}"
 # kubeconfig location
 kubeconfig: /etc/kubernetes/admin.conf
-# Token
+# Token for joining nodes to the cluster
 kube_token: "kube01.{{ lookup('password', '/var/tmp/tokenpass chars=ascii_lowercase,digits length=16') }}"
 # Token TTL duration (0 do not expire)
 kube_token_ttl: 0
@@ -18,7 +18,6 @@ kube_token_ttl: 0
 kube_pod_network_cidr: 10.244.0.0/16
 # Type of network to install: currently supported: flannel, kube-router, calico, weave
 kube_network: calico
-
 # Kube API server options
 kube_apiserver_options: []
 # CRI runtime
@@ -33,7 +32,7 @@ kube_cri_dockerd_version: "0.3.16"
 badpods_namespace: default
 
 # Which BadPods to apply (choose any subset)
-badpods:
+badpods: []
   # - everything_allowed_exec
   # - priv_and_hostpid_exec
   # - priv_exec
@@ -67,15 +66,12 @@ kubelet_anonymous_access: false
 #### HELM ####
 # Helm version
 kube_install_helm_version: "v3.17.2"
-
 install_helm_app: false
 # Release basics for your app
 helm_release_name: my-app
 helm_namespace: default
-helm_create_namespace: true
 
 # Pick ONE of these input styles:
-
 # A) Public repo + name (most common)
 helm_repo_url: ""         # e.g., https://charts.bitnami.com/bitnami
 helm_repo_name: ""        # optional; if empty, will derive from URL host (e.g., "bitnami")
@@ -97,9 +93,6 @@ helm_chart_version: ""    # e.g., "15.0.0"
 # Values (either inline dict OR one/many values files)
 helm_values: {}           # inline values map
 helm_values_files: []     # e.g., ["files/values.yaml", "files/overrides.yaml"]
-
-# Extra helm options
-helm_kubeconfig: /etc/kubernetes/admin.conf
 ##############
 
 
@@ -115,6 +108,8 @@ kube_persistent_volumes: []
 # A set of git repos and paths to be applied in the cluster. Following this format:
 # kube_apply_repos: [{repo: "https://github.com/kubernetes-incubator/metrics-server", version: "master", path: "deploy/1.8+/"}]
 kube_apply_repos: []
+# Apply kubernetes manifest(s). Accepts an individual file or folder path.
+kubectl_apply_path: ""
 # Flag to set Metrics-Server to be installed
 kube_install_metrics: false
 # Metrics-Server Helm chart version to install

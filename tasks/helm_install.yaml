@@ -88,7 +88,7 @@
       }}
     # repo ensured earlier; no chart_repo_url here (avoids warning path)
     release_namespace: "{{ helm_namespace }}"
-    create_namespace: "{{ helm_create_namespace }}"
+    create_namespace: true
     update_repo_cache: >-
       {{ (helm_chart_local_path | default('') | length == 0 and helm_chart_oci_ref | default('') | length == 0) | bool }}
     chart_version: "{{ helm_chart_version | default(omit, true) }}"   # ignored for local folder
@@ -97,6 +97,5 @@
     # Only for local charts; NOT for repo/OCI (avoids 'not supported on upgrade')
     dependency_update: >-
       {{ (helm_chart_local_path | default('') | length > 0) | ternary(true, false) }}
-    kubeconfig: "{{ helm_kubeconfig }}"
+    kubeconfig: "{{ kubeconfig }}"
     state: present
-  when: install_helm_app | bool
