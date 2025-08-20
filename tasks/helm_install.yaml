@@ -20,20 +20,6 @@
   when:
     - (helm_repo_url | default('') | trim) != ''
 
-- name: "Helm | Ensure Python pip present"
-  package:
-    name: python3-pip
-    state: present
-  become: yes
-
-- name: :"Helm | Install Kubernetes Python SDK on remote"
-  ansible.builtin.pip:
-    name:
-      - "kubernetes>=24.0.0"
-      - pyyaml
-    executable: pip3
-  become: yes
-
 # Assemble values input: inline dict + files (both optional)
 - name: "Helm | Build values list"
   set_fact:

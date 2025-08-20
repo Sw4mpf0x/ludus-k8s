@@ -10,20 +10,6 @@
       badpods contains unknown keys.
       Known keys: {{ badpods_url_map.keys() | list | sort }}
 
-- name: "BadPods | Ensure Python pip present"
-  package:
-    name: python3-pip
-    state: present
-  become: yes
-
-- name: :"BadPods | Install Kubernetes Python SDK on remote"
-  ansible.builtin.pip:
-    name:
-      - "kubernetes>=24.0.0"
-      - pyyaml
-    executable: pip3
-  become: yes
-
 - name: "BadPods | Ensure namespace exists"
   kubernetes.core.k8s:
     state: present

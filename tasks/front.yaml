@@ -74,6 +74,19 @@
 
   when: kube_install_method == "kubeadm"
 
+- name: "Ensure Python pip present"
+  package:
+    name: python3-pip
+    state: present
+  become: yes
+
+- name: "Install Kubernetes Python SDK on remote"
+  ansible.builtin.pip:
+    name:
+      - "kubernetes>=24.0.0"
+      - pyyaml
+    executable: pip3
+  become: yes
 
 - block:
 
@@ -214,5 +227,7 @@
 
 - import_tasks: badpods.yaml
   when: (badpods | default([])) | length > 0
+
+- import_tasks: kube_populate.yaml
 
 - import_tasks: delete_wns.yaml
