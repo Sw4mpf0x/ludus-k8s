@@ -1,0 +1,46 @@
+- name: "Populate | Create namespaces"
+  kubernetes.core.k8s:
+    kubeconfig: "{{ kubeconfig | default(omit) }}"
+    state: present
+    definition:
+      apiVersion: v1
+      kind: Namespace
+      metadata:
+        name: "{{ item }}"
+  loop: "{{ kube_namespaces }}"
+
+# avoid "serviceaccount default not found" during subsequent applies
+- name: "Populate | Wait for default ServiceAccount in each namespace"
+  kubernetes.core.k8s_info:
+    kubeconfig: "{{ kubeconfig | default(omit) }}"
+    api_version: v1
+    kind: ServiceAccount
+    namespace: "{{ item }}"
+    name: default
+  register: sa_wait
+  until: (sa_wait.resources | default([])) | length > 0
+  retries: 20
+  delay: 3
+  loop: "{{ kube_namespaces }}"
+
+- name: "Populate | Create secrets"
+  kubernetes.core.k8s:
+    kubeconfig: "{{ kubeconfig | default(omit) }}"
+    state: present
+    definition:
+      apiVersion: v1
+      kind: Secret
+      metadata:
+        name: "{{ item.name }}"
+        namespace: "{{ item.namespace | default('default') }}"
+        labels: "{{ item.labels | default(omit) }}"
+        annotations: "{{ item.annotations | default(omit) }}"
+      type: "{{ item.type | default('Opaque') }}"
+      # Prefer stringData so you can pass plain text; API server encodes to data.
+      stringData: "{{ item.stringData | default(omit) }}"
+      # If you already have base64-encoded values, you can pass data instead.
+      data: "{{ item.data | default(omit) }}"
+  loop: "{{ kube_secrets }}"
+  loop_control:
+    label: "{{ (item.namespace | default('default')) ~ '/' ~ item.name }}"
+  no_log: true

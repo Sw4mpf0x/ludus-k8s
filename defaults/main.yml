@@ -74,7 +74,7 @@ helm_namespace: default
 # Pick ONE of these input styles:
 # A) Public repo + name (most common)
 helm_repo_url: ""         # e.g., https://charts.bitnami.com/bitnami
-helm_repo_name: ""        # optional; if empty, will derive from URL host (e.g., "bitnami")
+helm_repo_name: ""        # arbitrary
 helm_chart_name: ""       # e.g., nginx
 
 # B) Local chart folder (directory with Chart.yaml)
@@ -105,10 +105,34 @@ kube_wait_api_server_ip: 127.0.0.1
 # List of values with the information for creating persisten volumes
 # Array variables needed: [ namespace : "", name : "", label : "", capacity_storage : "", nfs_path : "" ]
 kube_persistent_volumes: []
+# Populate namespaces
+kube_namespaces: []
+# Populate secrets. Examples below.
+kube_secrets: []
+#   - name: my-app-env
+#     namespace: apps
+#     type: Opaque
+#     stringData:
+#       DB_USER: "dbuser"
+#       DB_PASS: "DBP@$$w0rd"
+#   - name: tls-my-ingress
+#     namespace: apps
+#     type: kubernetes.io/tls
+#     # You can use stringData (API server does the base64)
+#     stringData:
+#       tls.crt: "{{ lookup('file', 'files/tls.crt') }}"
+#       tls.key: "{{ lookup('file', 'files/tls.key') }}"
+#   - name: docker-regcred
+#     namespace: apps
+#     type: kubernetes.io/dockerconfigjson
+#     stringData:
+#       .dockerconfigjson: "{{ lookup('file', 'files/dockerconfig.json') }}"
+
 # A set of git repos and paths to be applied in the cluster. Following this format:
 # kube_apply_repos: [{repo: "https://github.com/kubernetes-incubator/metrics-server", version: "master", path: "deploy/1.8+/"}]
 kube_apply_repos: []
-# Apply kubernetes manifest(s). Accepts an individual file or folder path.
+# Apply kubernetes manifest(s) from the "files" folder.
+# Accepts a relative individual file or folder path (e.g., 'pod.yaml' or 'manifests' for a folder).
 kubectl_apply_path: ""
 # Flag to set Metrics-Server to be installed
 kube_install_metrics: false
