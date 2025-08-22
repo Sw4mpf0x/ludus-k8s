@@ -13,7 +13,7 @@ If you want to deploy Kubernetes manifests or Helm charts alongside your range, 
 ludus ansible roles add -d ./ludus_k8s
 ```
 
-Install via Ansible Galaxy:
+Install via Ansible Galaxy (coming soon):
 
 ```
 ludus ansible collection add Sw4mpf0x.ludus_k8s
