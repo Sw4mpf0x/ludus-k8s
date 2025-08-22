@@ -1,33 +1,185 @@
 This is based on grycap's Ansible Role (https://github.com/grycap/ansible-role-kubernetes)
 
-Kubernetes Role
+Ludus Kubernetes Role
 =======================
 
-This ansible role installs a [Kubernetes](https://kubernetes.io/) cluster.
+This ansible role installs a [Kubernetes](https://kubernetes.io/) cluster to [Ludus](https://docs.ludus.cloud/).
 
-This work is co-funded by the [EOSC-hub project](http://eosc-hub.eu/) (Horizon 2020) under Grant number 777536.
-<img src="https://wiki.eosc-hub.eu/download/attachments/1867786/eu%20logo.jpeg?version=1&modificationDate=1459256840098&api=v2" height="24">
-<img src="https://wiki.eosc-hub.eu/download/attachments/18973612/eosc-hub-web.png?version=1&modificationDate=1516099993132&api=v2" height="24">
+## Installation in Ludus
 
-Role Variables
-----------------
+If you want to deploy Kubernetes manifests or Helm charts alongside your range, clone this repository to your Ludus system and run:
+
+```
+ludus ansible roles add -d ./ludus_k8s
+```
+
+Install via Ansible Galaxy:
+
+```
+ludus ansible collection add Sw4mpf0x.ludus_k8s
+```
+
+## Ludus Usage
+
+ludus_k8s supports automating the following in your range yaml file:
+ - automating Kubernetes misconfigurations
+ - BadPods deployment
+ - Helm via oci, repo, or local charts
+ - deploying your Kubernetes manifests
+
+To deploy in Ludus, point it to your range yaml file and deploy:
+
+```
+ludus range config set -f k8s-range.yml
+ludus range deploy
+```
+
+At a minimum, you will need to deploy two nodes, a front (control plane) and worker, when deploying a cluster with kubeadm (default behavior). Helm and kubectl are install on the front node, so any manifests or helm charts need to be specified on it, not a worker node. Front pods by default will not deploy pods, so they will wait until a worker node is availble and then deploy there. 
+
+### Basic Kuberentes Cluster
+
+A basic two node (control plane and worker) cluster with a couple of namespaces and a secret populated. Modifications, as with other ludus rangers, are made via `role_vars`. See examples below for different deployment options.
+
+```yaml
+ludus:
+  - vm_name: "{{ range_id }}-k8s-control-plane"
+    hostname: "{{ range_id }}-control-plane"
+    template: ubuntu-22.04-x64-server-template
+    vlan: 20
+    ip_last_octet: 1
+    ram_gb: 8
+    cpus: 4
+    linux: true
+    testing:
+      snapshot: false
+      block_internet: false
+    roles:
+    	- ludus-k8s
+    role_vars:
+		kube_namespaces:
+			- "yourspace"
+			- "myspace"
+		kube_secrets:
+			- name: my-app-env
+		      namespace: myspace
+			  type: Opaque
+			  stringData:
+			  	DB_USER: "dbuser"
+			  	DB_PASS: "S3cretP@ss"
+
+  - vm_name: "{{ range_id }}-k8s-node-1"
+    hostname: "{{ range_id }}-node-1"
+    template: ubuntu-22.04-x64-server-template
+    vlan: 20
+    ip_last_octet: 20
+    ram_gb: 8
+    cpus: 4
+    linux: true
+    testing:
+      snapshot: false
+      block_internet: false
+    roles:
+      - ludus-k8s
+    role_vars:
+      kube_type_of_node: 'wn'
+      kube_server: '10.2.20.1'
+```
+
+### Primary Role Variables
+
+#### Disable kubelet authentication and authorization
+
+If you want to turn off authz/authn on your kubelet APIs, use the following:
+
+```
+	role_vars:
+		kubelet_anonymous_access: true
+```
+
+#### Deploy via kubectl
+
+Deploy a single or folder full of kubernetes manifests with the `kubectl_apply_path` variable. These must be places in the `files` folder of this repository, so you will need to clone it and use `ludus ansible roles add -d ./ludus-k8s` to install the role in Ludus. You will need to re-add it anytime changes are made to the role, including modifications to the `files` folder.
+
+The following will use the `files/pods.yaml` file:
+
+```
+	role_vars:
+		kubectl_apply_path: "pods.yaml"
+```
+
+For a folder, simply specify the folder name. Here is an example for a folder at `files/manifests`
+
+```
+	role_vars:
+		kubectl_apply_path: "manifests"
+```
+
+#### Deploy via Helm
+
+Helm charts can be deployed as an OCI address, local folder, or by specifying a public repo and name. Charts can be deployed to a specific namespace with the `helm_namespace` variable and the release name can be set with `helm_release_name`.
+
+Public repo and name:
+
+```
+	role_vars:
+		helm_repo_url: "https://charts.bitnami.com/bitnami"
+		helm_repo_name: "my-nginx" 	# arbitrary
+		helm_chart_name: "nginx"
+```
+
+OCI address:
+
+```
+	role_vars:
+		helm_chart_oci_ref: "oci://registry-1.docker.io/bitnamicharts/nginx"
+	#	oci_username: "" 	# optional
+	#	oci_password: ""	# optional
+```
+
+Local Folder at `files/mycharts`:
+
+```
+	role_vars:
+		helm_chart_local_path: "mycharts"
+```
+
+#### Deploy BadPods
+
+BadPods is a collection of pod manifests with overly permissive configurations. They were created by BishopFox and can be found [here](https://github.com/BishopFox/badPods). The URL to each BadPod is indexed in the role and can be deployed a specified namespace with the following role variables. In this example, the `everything_allowed_exec` and `hostnetwork_exec` pods are deployed to the badpods, which will be created if it doesn't exist. 
+
+```
+	role_vars:
+		badpods_namespace: badpods
+		badpods:
+		  - everything_allowed_exec
+		# - priv_and_hostpid_exec
+		# - priv_exec
+		# - hostpath_exec
+		# - hostpid_exec
+		  - hostnetwork_exec
+		# - hostipc_exec
+		# - nothing_allowed_exec
+```
+
+## Other Role Variables
 
 The variables that can be passed to this role and a brief description about them are as follows.
 
+```
     # Version to install or latest (1.24 or higher)
-    kube_version: 1.24.17
-	# Type of node front or wn
+    kube_version: 1.32
+	# Type of node front (control plane) or wn (worker node)
 	kube_type_of_node: front
 	# IP address or name of the Kube front node
 	kube_server: "{{ ansible_default_ipv4.address }}"
-	# Security Token
+	# Security Token to join nodes to the cluster
 	kube_token: "kube01.{{ lookup('password', '/tmp/tokenpass chars=ascii_lowercase,digits length=16') }}"
 	# Token TTL duration (0 do not expire)
 	kube_token_ttl: 0
 	# POD network cidr
 	kube_pod_network_cidr: 10.244.0.0/16
 	# Type of network to install: currently supported: flannel, kube-router, calico, weave
-	kube_network: flannel
+	kube_network: calico
 	# Kubelet extra args
 	kubelet_extra_args: ''
 	# Kube API server options
@@ -85,24 +237,4 @@ The variables that can be passed to this role and a brief description about them
 	kube_install_method: kubeadm
 	# Servers to install and configure ntp. If [] ntp will not be configured
 	kube_ntp_servers: [ntp.upv.es, ntp.uv.es]
-
-Example Playbook
-----------------
-
-This an example of how to install this role in the front-end node:
-
-    - hosts: server
-      roles:
-      - { role: 'grycap.kubernetes', kube_apiserver_options: [{option: "--insecure-port", value: "8080"}] }
-
-And in the WNs:
-
-    - hosts: wn
-      roles:
-      - { role: 'grycap.kubernetes', kube_type_of_node: 'wn', kube_server: '10.0.0.1' }
-
-Contributing to the role
-========================
-In order to keep the code clean, pushing changes to the master branch has been disabled.
-If you want to contribute, you have to create a branch, upload your changes and then create a pull request.
-Thanks
+```
