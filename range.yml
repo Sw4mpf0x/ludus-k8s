@@ -11,7 +11,7 @@ ludus:
       snapshot: false
       block_internet: false
     roles:
-      - ludus-k8s
+      - ludus_k8s
     role_vars:
       kube_version: 1.32
 
@@ -27,7 +27,7 @@ ludus:
       snapshot: false
       block_internet: false
     roles:
-      - ludus-k8s
+      - ludus_k8s
     role_vars:
       kube_version: 1.32
       kube_type_of_node: 'wn'
