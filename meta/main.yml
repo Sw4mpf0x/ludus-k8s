@@ -1,17 +1,15 @@
 galaxy_info:
-  role_name: ludus-k8s
-  author: andrew.eric.luke@gmail.com
-  description: Install Kubernetes cluster on a Ludus server
-  company: 
+  role_name: ludus_k8s
+  author: sw4mpf0x
+  description: Install a Kubernetes cluster on your Ludus server
   license: Apache
   min_ansible_version: 2.0
   platforms:
-  - name: EL
+  - name: Debian
     versions:
-    - 7
-  - name: Ubuntu
-    versions:
-    - trusty
+    - buster
+    - bullseye
+    - bookworm
   galaxy_tags:
     - kubernetes
     - ludus
