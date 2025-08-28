@@ -85,7 +85,25 @@ ludus:
       kube_server: '10.2.20.1'
 ```
 
-### Primary Role Variables
+### Primary Role Functionality/Variables
+
+#### Deploy BadPods
+
+BadPods is a collection of pod manifests with overly permissive configurations. They were created by BishopFox and can be found [here](https://github.com/BishopFox/badPods). The URL to each BadPod is indexed in the role and can be deployed a specified namespace with the following role variables. In this example, the `everything_allowed_exec` and `hostnetwork_exec` pods are deployed to the badpods, which will be created if it doesn't exist. 
+
+```
+	role_vars:
+		badpods_namespace: badpods
+		badpods:
+		  - everything_allowed_exec
+		# - priv_and_hostpid_exec
+		# - priv_exec
+		# - hostpath_exec
+		# - hostpid_exec
+		  - hostnetwork_exec
+		# - hostipc_exec
+		# - nothing_allowed_exec
+```
 
 #### Disable kubelet authentication and authorization
 
@@ -156,24 +174,6 @@ Local Folder at `files/mycharts`:
 ```
 	role_vars:
 		helm_chart_local_path: "mycharts"
-```
-
-#### Deploy BadPods
-
-BadPods is a collection of pod manifests with overly permissive configurations. They were created by BishopFox and can be found [here](https://github.com/BishopFox/badPods). The URL to each BadPod is indexed in the role and can be deployed a specified namespace with the following role variables. In this example, the `everything_allowed_exec` and `hostnetwork_exec` pods are deployed to the badpods, which will be created if it doesn't exist. 
-
-```
-	role_vars:
-		badpods_namespace: badpods
-		badpods:
-		  - everything_allowed_exec
-		# - priv_and_hostpid_exec
-		# - priv_exec
-		# - hostpath_exec
-		# - hostpid_exec
-		  - hostnetwork_exec
-		# - hostipc_exec
-		# - nothing_allowed_exec
 ```
 
 ## Other Role Variables
