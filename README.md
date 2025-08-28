@@ -138,6 +138,8 @@ This clones the Kubernetes Goat repository to `/tmp/kubernetes-goat` and runs th
 
 Deploy a single or folder full of kubernetes manifests with the `kubectl_apply_path` variable. These must be places in the `files` folder of this repository, so you will need to clone it and use `ludus ansible roles add -d ./ludus-k8s` to install the role in Ludus. You will need to re-add it anytime changes are made to the role, including modifications to the `files` folder.
 
+After your range is running, you can use `kubectl` on the front node to interact with the cluster. Note that you need to run `kubectl` with `sudo`.
+
 The following will use the `files/pods.yaml` file:
 
 ```yaml
@@ -155,6 +157,8 @@ For a folder, simply specify the folder name. Here is an example for a folder at
 #### Deploy via Helm
 
 Helm charts can be deployed as an OCI address, local folder, or by specifying a public repo and name. Charts can be deployed to a specific namespace with the `helm_namespace` variable and the release name can be set with `helm_release_name`.
+
+After your range is running, you can use `helm` on the front node to interact with the cluster. Note that you need to run `kubectl`, and as a result `helm`, with `sudo`.
 
 Public repo and name:
 
