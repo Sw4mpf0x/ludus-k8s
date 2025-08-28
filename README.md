@@ -9,13 +9,13 @@ This ansible role installs a [Kubernetes](https://kubernetes.io/) cluster to [Lu
 
 If you want to deploy Kubernetes manifests or Helm charts alongside your range, clone this repository to your Ludus system and run:
 
-```
+```bash
 ludus ansible roles add -d ./ludus_k8s
 ```
 
 Install via Ansible Galaxy (coming soon):
 
-```
+```bash
 ludus ansible collection add Sw4mpf0x.ludus_k8s
 ```
 
@@ -29,16 +29,16 @@ ludus_k8s supports automating the following in your range yaml file:
 
 To deploy in Ludus, point it to your range yaml file and deploy:
 
-```
+```bash
 ludus range config set -f k8s-range.yml
 ludus range deploy
 ```
 
-At a minimum, you will need to deploy two nodes, a front (control plane) and worker, when deploying a cluster with kubeadm (default behavior). Helm and kubectl are install on the front node, so any manifests or helm charts need to be specified on it, not a worker node. Front pods by default will not deploy pods, so they will wait until a worker node is availble and then deploy there. 
+At a minimum, you will need to deploy two nodes, a front (control plane) and worker, when deploying a cluster with kubeadm (default behavior). Helm and kubectl are instaled on the front node, so any manifests or helm charts need to be specified on it in the range.yaml spec, not a worker node. Front pods by default will not deploy pods outside of the control plane, so they will wait until a worker node is availble and then deploy there. 
 
 ### Basic Kuberentes Cluster
 
-A basic two node (control plane and worker) cluster with a couple of namespaces and a secret populated. Modifications, as with other ludus rangers, are made via `role_vars`. See examples below for different deployment options.
+A basic two node (control plane and worker) cluster with a couple of namespaces and a secret populated. Modifications, as with other ludus rangers, are made via `role_vars`. See examples below for different role variables that can be used to populate the cluster.
 
 ```yaml
 ludus:
@@ -54,18 +54,7 @@ ludus:
       snapshot: false
       block_internet: false
     roles:
-    	- ludus-k8s
-    role_vars:
-		kube_namespaces:
-			- "yourspace"
-			- "myspace"
-		kube_secrets:
-			- name: my-app-env
-		      namespace: myspace
-			  type: Opaque
-			  stringData:
-			  	DB_USER: "dbuser"
-			  	DB_PASS: "S3cretP@ss"
+    	- ludus-k8s		
 
   - vm_name: "{{ range_id }}-k8s-node-1"
     hostname: "{{ range_id }}-node-1"
@@ -81,17 +70,33 @@ ludus:
     roles:
       - ludus-k8s
     role_vars:
-      kube_type_of_node: 'wn'
+      kube_type_of_node: 'wn' # defaults to a 'front' node
       kube_server: '10.2.20.1'
 ```
 
 ### Primary Role Functionality/Variables
 
+#### Populate Namespaces and Secrets
+
+```yaml
+	role_vars:
+		kube_namespaces:
+			- "yourspace"
+			- "myspace"
+		kube_secrets:
+			- name: my-app-env
+				namespace: myspace
+				type: Opaque
+				stringData:
+				DB_USER: "dbuser"
+				DB_PASS: "S3cretP@ss"
+```
+
 #### Deploy BadPods
 
 BadPods is a collection of pod manifests with overly permissive configurations. They were created by BishopFox and can be found [here](https://github.com/BishopFox/badPods). The URL to each BadPod is indexed in the role and can be deployed a specified namespace with the following role variables. In this example, the `everything_allowed_exec` and `hostnetwork_exec` pods are deployed to the badpods, which will be created if it doesn't exist. 
 
-```
+```yaml
 	role_vars:
 		badpods_namespace: badpods
 		badpods:
@@ -109,7 +114,7 @@ BadPods is a collection of pod manifests with overly permissive configurations. 
 
 If you want to turn off authz/authn on your kubelet APIs, use the following:
 
-```
+```yaml
 	role_vars:
 		kubelet_anonymous_access: true
 ```
@@ -118,7 +123,7 @@ If you want to turn off authz/authn on your kubelet APIs, use the following:
 
 To install [Kubernetes Goat](https://github.com/madhuakula/kubernetes-goat):
 
-```
+```yaml
 	role_vars:
 		install_kubernetes_goat: true
 ```
@@ -135,14 +140,14 @@ Deploy a single or folder full of kubernetes manifests with the `kubectl_apply_p
 
 The following will use the `files/pods.yaml` file:
 
-```
+```yaml
 	role_vars:
 		kubectl_apply_path: "pods.yaml"
 ```
 
 For a folder, simply specify the folder name. Here is an example for a folder at `files/manifests`
 
-```
+```yaml
 	role_vars:
 		kubectl_apply_path: "manifests"
 ```
@@ -153,7 +158,7 @@ Helm charts can be deployed as an OCI address, local folder, or by specifying a 
 
 Public repo and name:
 
-```
+```yaml
 	role_vars:
 		helm_repo_url: "https://charts.bitnami.com/bitnami"
 		helm_repo_name: "my-nginx" 	# arbitrary
@@ -162,7 +167,7 @@ Public repo and name:
 
 OCI address that installs [podinfo](https://github.com/stefanprodan/podinfo):
 
-```
+```yaml
 	role_vars:
 		helm_chart_oci_ref: "oci://ghcr.io/stefanprodan/modules/podinfo"
 	#	oci_username: "" 	# optional
@@ -171,7 +176,7 @@ OCI address that installs [podinfo](https://github.com/stefanprodan/podinfo):
 
 Local Folder at `files/mycharts`:
 
-```
+```yaml
 	role_vars:
 		helm_chart_local_path: "mycharts"
 ```
@@ -180,7 +185,7 @@ Local Folder at `files/mycharts`:
 
 The variables that can be passed to this role and a brief description about them are as follows.
 
-```
+```yaml
     # Version to install or latest (1.24 or higher)
     kube_version: 1.32
 	# Type of node front (control plane) or wn (worker node)
