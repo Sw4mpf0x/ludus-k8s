@@ -27,6 +27,17 @@ kube_cri_runtime_install: true
 # CRI dockerd version
 kube_cri_dockerd_version: "0.3.16"
 
+#### Kubernetes Goat ####
+install_kubernetes_goat: false
+
+goat_repo_url: "https://github.com/madhuakula/kubernetes-goat.git"
+goat_repo_dest: "/tmp/kubernetes-goat"
+goat_repo_version: "master"
+goat_repo_scripts: 
+  - "./setup-kubernetes-goat.sh"
+goat_force_run_script: false
+#########################
+
 #### BadPods ####
 # Namespace to apply into (omit to use manifest namespace or default kube context)
 badpods_namespace: default

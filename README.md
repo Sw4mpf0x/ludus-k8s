@@ -96,6 +96,21 @@ If you want to turn off authz/authn on your kubelet APIs, use the following:
 		kubelet_anonymous_access: true
 ```
 
+#### Install Kubernetes Goat
+
+To install [Kubernetes Goat](https://github.com/madhuakula/kubernetes-goat):
+
+```
+	role_vars:
+		install_kubernetes_goat: true
+```
+
+This clones the Kubernetes Goat repository to `/tmp/kubernetes-goat` and runs the install script. To get the portal setup:
+- ssh to the front node
+- run `sudo chmod +x /tmp/kubernetes-goat/access-kubernetes-goat.sh`
+- run `sudo /tmp/kubernetes-goat/access-kubernetes-goat.sh`
+- access the portal at `http://<front-node-ip>:1234/`
+
 #### Deploy via kubectl
 
 Deploy a single or folder full of kubernetes manifests with the `kubectl_apply_path` variable. These must be places in the `files` folder of this repository, so you will need to clone it and use `ludus ansible roles add -d ./ludus-k8s` to install the role in Ludus. You will need to re-add it anytime changes are made to the role, including modifications to the `files` folder.
@@ -127,11 +142,11 @@ Public repo and name:
 		helm_chart_name: "nginx"
 ```
 
-OCI address:
+OCI address that installs [podinfo](https://github.com/stefanprodan/podinfo):
 
 ```
 	role_vars:
-		helm_chart_oci_ref: "oci://registry-1.docker.io/bitnamicharts/nginx"
+		helm_chart_oci_ref: "oci://ghcr.io/stefanprodan/modules/podinfo"
 	#	oci_username: "" 	# optional
 	#	oci_password: ""	# optional
 ```

@@ -1,0 +1,22 @@
+---
+- name: "Kubernetes Goat | Ensure git is installed"
+  ansible.builtin.package:
+    name: git
+    state: present
+
+- name: "Kubernetes Goat | Checkout repository"
+  ansible.builtin.git:
+    repo: "{{ goat_repo_url }}"
+    dest: "{{ goat_repo_dest }}"
+    version: "{{ goat_repo_version }}"
+    update: yes
+    force: yes
+    accept_hostkey: yes
+  register: repo_checkout
+
+- name: Run repo scripts in order
+  ansible.builtin.shell: "bash -euxo pipefail {{ item }}"
+  args:
+    chdir: "{{ goat_repo_dest }}"
+  loop: "{{ goat_repo_scripts }}"
+  when: repo_checkout.changed or force_run_script

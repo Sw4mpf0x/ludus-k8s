@@ -8,6 +8,16 @@
   notify: sysctl-system
   when: kube_network == 'cilium'
 
+- name: Install packages
+  become: yes
+  ansible.builtin.package:
+    name:
+      - git
+      - socat
+      - net-tools
+      - jq
+    state: present
+
 - block:
 
   - name: Read node-token from FE

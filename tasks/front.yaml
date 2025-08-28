@@ -160,9 +160,15 @@
         KUBECONFIG: "{{KUBECONFIG}}"
   when: kube_persistent_volumes != []
 
-- name: Install Git package
-  package: name=git
-  when: kube_apply_repos != []
+- name: Install packages
+  become: yes
+  ansible.builtin.package:
+    name:
+      - git
+      - socat
+      - net-tools
+      - jq
+    state: present
 
 - name: Download git repo "{{ item.repo }}"
   git:
@@ -227,6 +233,9 @@
 
 - import_tasks: badpods.yaml
   when: (badpods | default([])) | length > 0
+
+- import_tasks: kubernetes_goat.yaml
+  when: install_kubernetes_goat | bool
 
 - import_tasks: kube_populate.yaml
 
